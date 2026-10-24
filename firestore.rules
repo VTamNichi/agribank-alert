@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Quy tắc bảo mật cho danh sách thiết bị
+    match /devices/{deviceId} {
+      allow read, write: if request.auth != null || true; // Cấu hình linh hoạt hoặc theo Firebase Auth
+    }
+
+    // Quy tắc cho mã ghép nối tạm thời (hết hạn sau 10 phút)
+    match /pair_codes/{code} {
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+
+    // Quy tắc cho lịch sử giao dịch chuyển tiếp
+    match /transactions/{eventId} {
+      allow read, create: if true;
+      allow update, delete: if false; // Chống sửa đổi lịch sử
+    }
+
+    // Bảng kiểm tra chống trùng lặp sự kiện
+    match /processed_events/{eventId} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+  }
+}
