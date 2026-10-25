@@ -24,12 +24,15 @@ class AlertProvider extends ChangeNotifier {
   bool _isServerConnected = false;
   String? _lastLog;
 
+  bool _isForegroundServiceRunning = false;
+
   List<TransactionAlert> get history => _history;
   TransactionAlert? get latestAlert => _latestAlert;
   bool get isListening => _isListening;
   bool get hasNotificationPermission => _hasNotificationPermission;
   bool get isBatteryOptIgnored => _isBatteryOptIgnored;
   bool get isServerConnected => _isServerConnected;
+  bool get isForegroundServiceRunning => _isForegroundServiceRunning;
   String? get lastLog => _lastLog;
 
   double get totalReceivedToday {
@@ -80,6 +83,9 @@ class AlertProvider extends ChangeNotifier {
       _connectToRelayServer();
     }
 
+    // Khởi động Foreground Service để giữ kết nối ngầm 24/7
+    await startForegroundService();
+
     notifyListeners();
   }
 
@@ -127,7 +133,24 @@ class AlertProvider extends ChangeNotifier {
   Future<void> checkPermissions() async {
     _hasNotificationPermission = await _nativeListener.isPermissionGranted();
     _isBatteryOptIgnored = await _nativeListener.isBatteryOptimizationIgnored();
+    _isForegroundServiceRunning = await _nativeListener.isForegroundServiceRunning();
     notifyListeners();
+  }
+
+  Future<void> startForegroundService() async {
+    final started = await _nativeListener.startForegroundService();
+    if (started) {
+      _isForegroundServiceRunning = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopForegroundService() async {
+    final stopped = await _nativeListener.stopForegroundService();
+    if (stopped) {
+      _isForegroundServiceRunning = false;
+      notifyListeners();
+    }
   }
 
   Future<void> requestNotificationPermission() async {

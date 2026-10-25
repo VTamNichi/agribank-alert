@@ -139,4 +139,36 @@ class NativeNotificationListenerService {
       return false;
     }
   }
+
+  /// Khởi động dịch vụ chạy ngầm chuyên dụng (Foreground Service)
+  Future<bool> startForegroundService() async {
+    try {
+      final bool started = await _methodChannel.invokeMethod('startForegroundService');
+      return started;
+    } catch (e) {
+      debugPrint('Lỗi khởi động Foreground Service: $e');
+      return false;
+    }
+  }
+
+  /// Dừng dịch vụ chạy ngầm chuyên dụng
+  Future<bool> stopForegroundService() async {
+    try {
+      final bool stopped = await _methodChannel.invokeMethod('stopForegroundService');
+      return stopped;
+    } catch (e) {
+      debugPrint('Lỗi dừng Foreground Service: $e');
+      return false;
+    }
+  }
+
+  /// Kiểm tra xem Foreground Service có đang chạy không
+  Future<bool> isForegroundServiceRunning() async {
+    try {
+      final bool running = await _methodChannel.invokeMethod('isForegroundServiceRunning');
+      return running;
+    } catch (e) {
+      return false;
+    }
+  }
 }

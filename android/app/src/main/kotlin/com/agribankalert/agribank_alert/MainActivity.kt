@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.annotation.NonNull
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -81,6 +82,27 @@ class MainActivity : FlutterActivity() {
                     val content = call.argument<String>("content") ?: "Biến động số dư TK 1500205123456: +500,000 VND"
                     val success = postTestNotification(title, content)
                     result.success(success)
+                }
+                "startForegroundService" -> {
+                    try {
+                        val intent = Intent(this, AgribankForegroundService::class.java)
+                        ContextCompat.startForegroundService(this, intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ERROR", e.message, null)
+                    }
+                }
+                "stopForegroundService" -> {
+                    try {
+                        val intent = Intent(this, AgribankForegroundService::class.java)
+                        stopService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ERROR", e.message, null)
+                    }
+                }
+                "isForegroundServiceRunning" -> {
+                    result.success(AgribankForegroundService.isRunning)
                 }
                 else -> {
                     result.notImplemented()

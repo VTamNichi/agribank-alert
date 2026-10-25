@@ -88,6 +88,24 @@ class StatusIndicatorCard extends StatelessWidget {
               actionText: alertProvider.isBatteryOptIgnored ? null : 'Cấu hình',
               onAction: () => alertProvider.requestBatteryOptimization(),
             ),
+            const Divider(height: 20),
+
+            // 3. Dịch vụ chạy ngầm 24/7 (Foreground Service)
+            _buildStatusItem(
+              title: 'Dịch vụ chạy ngầm 24/7 (Foreground Service)',
+              subtitle: alertProvider.isForegroundServiceRunning
+                  ? '✅ Đang chạy — giữ kết nối mạng và loa liên tục khi tắt màn hình'
+                  : 'Chưa bật — app có thể bị Android tắt khi khóa màn hình',
+              isSuccess: alertProvider.isForegroundServiceRunning,
+              actionText: alertProvider.isForegroundServiceRunning ? 'Tắt' : 'Bật ngay',
+              onAction: () {
+                if (alertProvider.isForegroundServiceRunning) {
+                  alertProvider.stopForegroundService();
+                } else {
+                  alertProvider.startForegroundService();
+                }
+              },
+            ),
 
             if (alertProvider.lastLog != null && alertProvider.lastLog!.isNotEmpty) ...[
               const SizedBox(height: 12),
