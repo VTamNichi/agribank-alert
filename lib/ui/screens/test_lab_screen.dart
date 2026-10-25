@@ -145,6 +145,21 @@ class _TestLabScreenState extends State<TestLabScreen> {
               },
             ),
 
+            // Kịch bản 5: Giao dịch trên 10 triệu (+15,000,000 VND)
+            _buildScenarioTile(
+              title: '5. Giao dịch lớn (+15,000,000 VND)',
+              description: 'Biến động số dư TK 1500205123456: +15,000,000 VND lúc 15:30. ND: Chuyen tien hop dong',
+              expected: 'TỪ CHỐI / BỎ QUA (Chỉ bắn thông báo dưới 10 triệu)',
+              isCredit: false,
+              onTest: () {
+                _customTitleController.text = 'Agribank Alert';
+                _customContentController.text =
+                    'Biến động số dư TK 1500205123456: +15,000,000 VND lúc 15:30. ND: Chuyen tien hop dong';
+                _runParserTest(_customTitleController.text, _customContentController.text);
+                alertProvider.simulateNotification(_customTitleController.text, _customContentController.text);
+              },
+            ),
+
             const SizedBox(height: 16),
 
             // 2. Tự nhập mẫu để kiểm tra (Custom Input)

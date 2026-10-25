@@ -17,6 +17,8 @@ class SettingsProvider extends ChangeNotifier {
   late double _ttsRate;
   late String _ttsPrefix;
   late List<String> _monitoredPackages;
+  late bool _maxAmountFilterEnabled;
+  late double _maxAmountLimit;
 
   DeviceRole get role => _role;
   String get deviceId => _deviceId;
@@ -26,6 +28,8 @@ class SettingsProvider extends ChangeNotifier {
   double get ttsRate => _ttsRate;
   String get ttsPrefix => _ttsPrefix;
   List<String> get monitoredPackages => _monitoredPackages;
+  bool get maxAmountFilterEnabled => _maxAmountFilterEnabled;
+  double get maxAmountLimit => _maxAmountLimit;
 
   Future<void> init() async {
     await _storage.init();
@@ -37,6 +41,8 @@ class SettingsProvider extends ChangeNotifier {
     _ttsRate = _storage.getTtsRate();
     _ttsPrefix = _storage.getTtsPrefix();
     _monitoredPackages = _storage.getMonitoredPackages();
+    _maxAmountFilterEnabled = _storage.getMaxAmountFilterEnabled();
+    _maxAmountLimit = _storage.getMaxAmountLimit();
     notifyListeners();
   }
 
@@ -87,6 +93,19 @@ class SettingsProvider extends ChangeNotifier {
     _monitoredPackages = packages;
     await _storage.setMonitoredPackages(packages);
     await _native.setMonitoredPackages(packages);
+    notifyListeners();
+  }
+
+  // Lọc số tiền tối đa
+  Future<void> setMaxAmountFilterEnabled(bool enabled) async {
+    _maxAmountFilterEnabled = enabled;
+    await _storage.setMaxAmountFilterEnabled(enabled);
+    notifyListeners();
+  }
+
+  Future<void> setMaxAmountLimit(double limit) async {
+    _maxAmountLimit = limit;
+    await _storage.setMaxAmountLimit(limit);
     notifyListeners();
   }
 }

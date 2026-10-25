@@ -33,6 +33,11 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node related
+node_modules/
+**/node_modules/
+package-lock.json
+
 # Symbolication related
 app.*.symbols
 

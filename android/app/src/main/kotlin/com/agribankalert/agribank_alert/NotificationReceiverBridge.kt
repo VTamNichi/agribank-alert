@@ -90,7 +90,13 @@ object NotificationReceiverBridge {
 
     fun getMonitoredPackages(context: Context): Set<String> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val defaultSet = setOf("com.vnpay.Agribank3g", "com.agribankalert.agribank_alert")
+        val defaultSet = setOf(
+            "com.vnpay.Agribank3g",
+            "com.google.android.apps.messaging",
+            "com.samsung.android.messaging",
+            "com.android.mms",
+            "com.agribankalert.agribank_alert"
+        )
         return prefs.getStringSet(KEY_MONITORED_PACKAGES, defaultSet) ?: defaultSet
     }
 

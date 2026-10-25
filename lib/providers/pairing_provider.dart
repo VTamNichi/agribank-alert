@@ -21,8 +21,23 @@ class PairingProvider extends ChangeNotifier {
   Future<void> init() async {
     await _storage.init();
     _pairingInfo = _storage.getPairingInfo();
+
+    // Lắng nghe sự kiện ghép cặp thành công từ đối tác qua WebSocket
+    _relay.onPairingUpdated = (pairedId, pairedName) async {
+      await _storage.savePairingInfo(
+        pairedDeviceId: pairedId,
+        pairedDeviceName: pairedName,
+      );
+      _pairingInfo = _storage.getPairingInfo();
+      _successMessage = 'Đã kết nối thành công với $pairedName!';
+      _errorMessage = null;
+      notifyListeners();
+    };
+
     if (_pairingInfo.pairCode == null || _pairingInfo.pairCode!.isEmpty) {
       await generateNewPairCode();
+    } else {
+      await _syncPairCodeToServer(_pairingInfo.pairCode!);
     }
     notifyListeners();
   }
@@ -33,7 +48,19 @@ class PairingProvider extends ChangeNotifier {
     final code = 'AG-$number';
     await _storage.savePairingInfo(pairCode: code);
     _pairingInfo = _storage.getPairingInfo();
+    await _syncPairCodeToServer(code);
     notifyListeners();
+  }
+
+  Future<void> _syncPairCodeToServer(String code) async {
+    if (_pairingInfo.serverUrl != null && _pairingInfo.serverUrl!.isNotEmpty) {
+      await _relay.registerPairCode(
+        code: code,
+        currentDeviceId: _pairingInfo.deviceId,
+        currentDeviceName: _pairingInfo.deviceName,
+        serverUrl: _pairingInfo.serverUrl,
+      );
+    }
   }
 
   Future<bool> pairWithCode(String code) async {
@@ -70,6 +97,43 @@ class PairingProvider extends ChangeNotifier {
     }
   }
 
+  Future<RelayResult> testServerConnection(String? url) async {
+    return await _relay.testServerConnection(url ?? _pairingInfo.serverUrl);
+  }
+
+  Future<bool> autoPair() async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _relay.autoPair(
+      currentDeviceId: _pairingInfo.deviceId,
+      currentDeviceName: _pairingInfo.deviceName,
+      serverUrl: _pairingInfo.serverUrl,
+    );
+
+    _isLoading = false;
+    if (result.success) {
+      final data = result.data as Map<String, dynamic>?;
+      final pairedId = data?['pairedDeviceId']?.toString() ?? 'device-auto';
+      final pairedName = data?['pairedDeviceName']?.toString() ?? 'Thiết bị đối tác';
+
+      await _storage.savePairingInfo(
+        pairedDeviceId: pairedId,
+        pairedDeviceName: pairedName,
+      );
+      _pairingInfo = _storage.getPairingInfo();
+      _successMessage = result.message;
+      notifyListeners();
+      return true;
+    } else {
+      _errorMessage = result.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> unpair() async {
     await _storage.clearPairing();
     _pairingInfo = _storage.getPairingInfo();
@@ -78,8 +142,12 @@ class PairingProvider extends ChangeNotifier {
   }
 
   Future<void> setServerUrl(String url) async {
-    await _storage.savePairingInfo(serverUrl: url.trim());
+    final cleanUrl = RelayService.normalizeUrl(url);
+    await _storage.savePairingInfo(serverUrl: cleanUrl);
     _pairingInfo = _storage.getPairingInfo();
+    if (_pairingInfo.pairCode != null) {
+      await _syncPairCodeToServer(_pairingInfo.pairCode!);
+    }
     notifyListeners();
   }
 }

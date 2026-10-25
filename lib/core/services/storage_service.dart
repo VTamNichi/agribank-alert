@@ -163,7 +163,14 @@ class StorageService {
   Future<void> setTtsPrefix(String val) async => await _prefs?.setString(_keyTtsPrefix, val);
 
   List<String> getMonitoredPackages() {
-    return _prefs?.getStringList(_keyMonitoredPackages) ?? ['com.vnpay.Agribank3g', 'com.agribankalert.agribank_alert'];
+    return _prefs?.getStringList(_keyMonitoredPackages) ??
+        [
+          'com.vnpay.Agribank3g',
+          'com.google.android.apps.messaging',
+          'com.samsung.android.messaging',
+          'com.android.mms',
+          'com.agribankalert.agribank_alert',
+        ];
   }
 
   Future<void> setMonitoredPackages(List<String> pkgs) async {

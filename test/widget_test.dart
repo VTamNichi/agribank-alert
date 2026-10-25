@@ -71,5 +71,23 @@ void main() {
       expect(result.isValidTransaction, isFalse);
       expect(result.rejectReason, contains('từ khóa bỏ qua/bảo mật'));
     });
+
+    test('Parses large transaction (+15,000,000 VND) successfully before filtering', () {
+      const title = 'Agribank Alert';
+      const body = 'Biến động số dư TK 1500205123456: +15,000,000 VND lúc 15:30. ND: Chuyen tien hop dong';
+
+      final result = NotificationParser.parse(
+        rawTitle: title,
+        rawContent: body,
+        deviceId: 'device-test',
+      );
+
+      expect(result.isValidTransaction, isTrue);
+      expect(result.isCredit, isTrue);
+      expect(result.alert!.amount, equals(15000000.0));
+      // Thuật toán đọc số tiếng Việt
+      final words = VietnameseNumberToWords.convert(result.alert!.amount);
+      expect(words, equals('mười lăm triệu đồng'));
+    });
   });
 }

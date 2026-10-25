@@ -21,14 +21,6 @@ class AgribankNotificationListenerService : NotificationListenerService() {
         if (sbn == null) return
 
         val packageName = sbn.packageName ?: return
-        val monitored = NotificationReceiverBridge.getMonitoredPackages(applicationContext)
-
-        // If package is not monitored and not in test mode, ignore
-        val isMonitored = monitored.contains(packageName) || monitored.contains("*")
-        if (!isMonitored) {
-            return
-        }
-
         val notification = sbn.notification ?: return
         val extras = notification.extras ?: return
 
@@ -37,6 +29,33 @@ class AgribankNotificationListenerService : NotificationListenerService() {
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
         val infoText = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString() ?: ""
+
+        val combined = "$packageName $title $text $bigText $subText".lowercase()
+        val isAgribankRelated = combined.contains("agribank") || combined.contains("vnpay") || combined.contains("1500")
+
+        val isSmsApp = packageName.contains("messaging") || 
+                       packageName.contains("mms") || 
+                       packageName.contains("telephony") ||
+                       packageName.contains("sms") ||
+                       packageName == "com.google.android.apps.messaging" ||
+                       packageName == "com.samsung.android.messaging" ||
+                       packageName == "com.android.mms"
+
+        val monitored = NotificationReceiverBridge.getMonitoredPackages(applicationContext)
+
+        // Cho phép thông báo nếu:
+        // 1. Gói ứng dụng nằm trong danh sách theo dõi
+        // 2. Chế độ debug bắt tất cả (*)
+        // 3. Ứng dụng SMS có chứa nội dung liên quan Agribank
+        // 4. Bất kỳ thông báo nào liên quan Agribank có dấu hiệu biến động số dư (+ hoặc nhận tiền)
+        val isMonitored = monitored.contains(packageName) || 
+                          monitored.contains("*") || 
+                          (isSmsApp && isAgribankRelated) ||
+                          (isAgribankRelated && (combined.contains("+") || combined.contains("nhan tien") || combined.contains("so du")))
+
+        if (!isMonitored) {
+            return
+        }
 
         val postTime = sbn.postTime
         val notificationId = sbn.id

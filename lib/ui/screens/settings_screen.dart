@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/device_role.dart';
@@ -32,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final alertProvider = context.watch<AlertProvider>();
+    final currencyFormat = NumberFormat('#,###', 'vi_VN');
 
     return Scaffold(
       appBar: AppBar(
@@ -174,7 +176,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 4. Quyền hệ thống Android
+          // 4. Bộ lọc hạn mức số tiền (Chỉ bắn thông báo dưới 10 triệu)
+          _buildSectionHeader('BỘ LỌC HẠN MỨC SỐ TIỀN'),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Chỉ bắn thông báo dưới hạn mức', style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                      'Tự động bỏ qua các giao dịch từ ${currencyFormat.format(settings.maxAmountLimit)} đ trở lên',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: settings.maxAmountFilterEnabled,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (val) => settings.setMaxAmountFilterEnabled(val),
+                  ),
+                  if (settings.maxAmountFilterEnabled) ...[
+                    const Divider(),
+                    const Text('Chọn mức trần tối đa:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildLimitChip(5000000, 'Dưới 5 triệu', settings),
+                        _buildLimitChip(10000000, 'Dưới 10 triệu (Mặc định)', settings),
+                        _buildLimitChip(20000000, 'Dưới 20 triệu', settings),
+                        _buildLimitChip(50000000, 'Dưới 50 triệu', settings),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 5. Quyền hệ thống Android
           _buildSectionHeader('QUYỀN HỆ THỐNG ANDROID'),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -210,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 5. Ứng dụng theo dõi
+          // 6. Ứng dụng theo dõi
           _buildSectionHeader('DANH SÁCH PACKAGE THEO DÕI'),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -240,9 +283,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            settings.setMonitoredPackages(['com.vnpay.Agribank3g', 'com.agribankalert.agribank_alert']);
+                            settings.setMonitoredPackages([
+                              'com.vnpay.Agribank3g',
+                              'com.google.android.apps.messaging',
+                              'com.samsung.android.messaging',
+                              'com.android.mms',
+                              'com.agribankalert.agribank_alert',
+                            ]);
                           },
-                          child: const Text('Mặc định (Agribank)', style: TextStyle(fontSize: 11)),
+                          child: const Text('Mặc định (Agribank + SMS)', style: TextStyle(fontSize: 11)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -289,6 +338,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       selectedColor: AppColors.primary,
       onSelected: (selected) {
         if (selected) settings.setTtsPrefix(prefix);
+      },
+    );
+  }
+
+  Widget _buildLimitChip(double amount, String label, SettingsProvider settings) {
+    final isSelected = (settings.maxAmountLimit - amount).abs() < 1;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : Colors.black87,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: AppColors.primary,
+      onSelected: (selected) {
+        if (selected) settings.setMaxAmountLimit(amount);
       },
     );
   }

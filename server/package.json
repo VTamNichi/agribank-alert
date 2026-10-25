@@ -1,0 +1,19 @@
+{
+  "name": "agribank-alert-server",
+  "version": "1.0.0",
+  "description": "Server chuyển tiếp thông báo Agribank Alert qua WebSocket (miễn phí, không cần Firebase Blaze)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0",
+    "cors": "^2.8.5",
+    "uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

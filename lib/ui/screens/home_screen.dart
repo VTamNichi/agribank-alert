@@ -289,9 +289,13 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      role.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    Flexible(
+                      child: Text(
+                        role.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Container(
@@ -301,7 +305,7 @@ class HomeScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        isPaired ? 'Đã ghép cặp' : 'Độc lập',
+                        isPaired ? 'Đã ghép' : 'Độc lập',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -314,11 +318,19 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   settings.deviceName,
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 6),
           TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             onPressed: () => onNavigateTab(2), // Tab Pairing
             child: const Text('Ghép cặp', style: TextStyle(fontSize: 12)),
           ),

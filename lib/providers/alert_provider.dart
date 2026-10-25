@@ -21,6 +21,7 @@ class AlertProvider extends ChangeNotifier {
   bool _isListening = false;
   bool _hasNotificationPermission = false;
   bool _isBatteryOptIgnored = false;
+  bool _isServerConnected = false;
   String? _lastLog;
 
   List<TransactionAlert> get history => _history;
@@ -28,6 +29,7 @@ class AlertProvider extends ChangeNotifier {
   bool get isListening => _isListening;
   bool get hasNotificationPermission => _hasNotificationPermission;
   bool get isBatteryOptIgnored => _isBatteryOptIgnored;
+  bool get isServerConnected => _isServerConnected;
   String? get lastLog => _lastLog;
 
   double get totalReceivedToday {
@@ -66,13 +68,60 @@ class AlertProvider extends ChangeNotifier {
 
     await checkPermissions();
 
-    // Khởi động lắng nghe thông báo Android
+    // Khởi động lắng nghe thông báo Android (Máy A hoặc Standalone)
     startListening();
 
     // Quét các thông báo chưa đọc trong hàng đợi nền
     await drainPendingNotifications();
 
+    // Nếu là Máy B (Receiver): kết nối WebSocket đến server để nhận thông báo từ xa
+    final role = _storage.getDeviceRole();
+    if (role == DeviceRole.receiver) {
+      _connectToRelayServer();
+    }
+
     notifyListeners();
+  }
+
+  void reconnectRelayServer() {
+    final role = _storage.getDeviceRole();
+    if (role == DeviceRole.receiver) {
+      _connectToRelayServer();
+    } else {
+      _relay.disconnectWebSocket();
+      _isServerConnected = false;
+      notifyListeners();
+    }
+  }
+
+  void _connectToRelayServer() {
+    final pairingInfo = _storage.getPairingInfo();
+    final serverUrl = pairingInfo.serverUrl;
+    final deviceId = _storage.getDeviceId();
+    final deviceName = _storage.getDeviceName();
+
+    if (serverUrl != null && serverUrl.isNotEmpty) {
+      _relay.onAlertReceived = (alert) {
+        _history = _storage.getHistory();
+        _latestAlert = alert;
+        _lastLog = '💰 Nhận từ xa: +${alert.amount.toInt()} VND';
+        notifyListeners();
+      };
+
+      _relay.onConnectionChanged = (connected) {
+        _isServerConnected = connected;
+        _lastLog = connected
+            ? '✅ Đã kết nối server chuyển tiếp'
+            : '⚠️ Mất kết nối server. Đang kết nối lại...';
+        notifyListeners();
+      };
+
+      _relay.connectWebSocket(
+        serverUrl: serverUrl,
+        deviceId: deviceId,
+        deviceName: deviceName,
+      );
+    }
   }
 
   Future<void> checkPermissions() async {
@@ -149,7 +198,17 @@ class AlertProvider extends ChangeNotifier {
 
     final alert = parseResult.alert!;
 
-    // 2. Chống trùng lặp (Duplicate Check)
+    // 2. Lọc số tiền tối đa (mặc định: chỉ bắn dưới 10 triệu)
+    if (_storage.getMaxAmountFilterEnabled()) {
+      final maxLimit = _storage.getMaxAmountLimit();
+      if (alert.amount >= maxLimit) {
+        _lastLog = '⛔ Bỏ qua: +${alert.amount.toInt()} VND vượt ngưỡng ${maxLimit.toInt()} VND';
+        notifyListeners();
+        return;
+      }
+    }
+
+    // 3. Chống trùng lặp (Duplicate Check)
     final isDuplicate = await _storage.isEventProcessed(alert.eventId);
     if (isDuplicate) {
       _lastLog = 'Phát hiện thông báo trùng (Event ID: ${alert.eventId}) -> Bỏ qua';
@@ -157,7 +216,7 @@ class AlertProvider extends ChangeNotifier {
       return;
     }
 
-    // 3. Đánh dấu đã xử lý & lưu lịch sử
+    // 4. Đánh dấu đã xử lý & lưu lịch sử
     await _storage.markEventProcessed(alert.eventId);
     await _storage.addTransactionToHistory(alert);
     _history = _storage.getHistory();
@@ -166,22 +225,24 @@ class AlertProvider extends ChangeNotifier {
     final role = _storage.getDeviceRole();
     final pairingInfo = _storage.getPairingInfo();
 
-    _lastLog = 'Xử lý thành công giao dịch nhận +${alert.amount} VND';
+    _lastLog = '✅ Xử lý giao dịch nhận +${alert.amount.toInt()} VND';
 
-    // 4. Nếu là Máy B (Receiver) hoặc Máy Test (Standalone): Phát thông báo nổi & Đọc giọng nói
+    // 5. Nếu là Máy B (Receiver) hoặc Máy Test (Standalone): Phát thông báo nổi & Đọc giọng nói
     if (role == DeviceRole.receiver || role == DeviceRole.standalone) {
       await _localNotifications.showTransactionNotification(alert);
       final prefix = _storage.getTtsPrefix();
       await _tts.speakTransaction(alert, prefix: prefix);
     }
 
-    // 5. Nếu là Máy A (Sender): Chuyển tiếp sự kiện sang Máy B qua Relay/Firebase
+    // 6. Nếu là Máy A (Sender): Chuyển tiếp sự kiện sang Server
     if (role == DeviceRole.sender) {
       final relayResult = await _relay.forwardTransactionAlert(
         alert: alert,
-        pairingInfo: pairingInfo,
+        senderDeviceId: pairingInfo.deviceId,
+        targetDeviceId: pairingInfo.pairedDeviceId,
+        serverUrl: pairingInfo.serverUrl,
       );
-      _lastLog = 'Chuyển tiếp đến Máy B: ${relayResult.message}';
+      _lastLog = 'Chuyển tiếp: ${relayResult.message}';
     }
 
     notifyListeners();
@@ -208,5 +269,11 @@ class AlertProvider extends ChangeNotifier {
     _history = [];
     _latestAlert = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _relay.disconnectWebSocket();
+    super.dispose();
   }
 }
